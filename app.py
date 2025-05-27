@@ -7,7 +7,7 @@ import os
 import requests
 from io import BytesIO
 import numpy as np
-from diffusers.utils import load_image
+from diffusers.utils import load_image, make_image_grid
 
 # Set page config
 st.set_page_config(
@@ -227,7 +227,7 @@ except Exception as e:
     st.stop()
 
 # Create tabs with new styling
-tab1, tab2, tab3 = st.tabs(["Text to Image", "Image to Image", "Inpainting"])
+tab1, tab2, tab3, tab4 = st.tabs(["Text to Image", "Image to Image", "Inpainting", "Interpolation"])
 
 # Wrap the content in a container
 with st.container():
@@ -530,6 +530,143 @@ with st.container():
                     
                 except Exception as e:
                     st.error(f"Error generating inpainting: {str(e)}")
+
+    # Interpolation Tab
+    with tab4:
+        # Create two columns for the layout
+        col1, col2 = st.columns([1, 1])
+
+        # Left column for inputs
+        with col1:
+            with st.form("interpolation_form"):
+                st.markdown("### Input Images")
+                
+                # First image input
+                st.markdown("#### First Image")
+                img1_upload = st.file_uploader("Upload first image", type=["png", "jpg", "jpeg"], key="img1")
+                img1_url = st.text_input("Or enter first image URL", key="url1")
+                
+                # Second image input
+                st.markdown("#### Second Image")
+                img2_upload = st.file_uploader("Upload second image", type=["png", "jpg", "jpeg"], key="img2")
+                img2_url = st.text_input("Or enter second image URL", key="url2")
+                
+                # Optional text prompt
+                prompt = st.text_area(
+                    "Optional text prompt",
+                    placeholder="Leave empty for pure image interpolation",
+                    height=100
+                )
+                
+                st.markdown("### Interpolation Settings")
+                
+                # Weight sliders
+                st.markdown("#### Weights")
+                weight1 = st.slider(
+                    "First Image Weight",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.3,
+                    step=0.1
+                )
+                
+                weight2 = st.slider(
+                    "Second Image Weight",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.3,
+                    step=0.1
+                )
+                
+                # Text weight (remaining weight)
+                text_weight = 1.0 - (weight1 + weight2)
+                st.markdown(f"Text Weight: {text_weight:.1f}")
+                
+                st.markdown("### Image Settings")
+                
+                col1_1, col1_2 = st.columns(2)
+                with col1_1:
+                    width = st.slider(
+                        "Width",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                with col1_2:
+                    height = st.slider(
+                        "Height",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                
+                generate_button = st.form_submit_button("🔄 Generate Interpolation")
+
+        # Right column for results
+        with col2:
+            st.markdown("### Generated Image")
+            if 'interpolation_image' not in st.session_state:
+                st.info("👆 Upload two images and click 'Generate Interpolation' to create your masterpiece!")
+            else:
+                with st.container():
+                    st.image(st.session_state.interpolation_image, width=500)
+                    if 'interpolation_bytes' in st.session_state:
+                        st.download_button(
+                            label="⬇️ Download Image",
+                            data=st.session_state.interpolation_bytes,
+                            file_name="interpolated_image.png",
+                            mime="image/png"
+                        )
+
+        # Generate image when the form is submitted
+        if generate_button and ((img1_upload or img1_url) and (img2_upload or img2_url)):
+            with st.spinner("Generating interpolation..."):
+                try:
+                    # Load the input images
+                    def load_input_image(upload, url):
+                        if upload:
+                            return Image.open(upload)
+                        else:
+                            response = requests.get(url)
+                            return Image.open(BytesIO(response.content))
+                    
+                    img1 = load_input_image(img1_upload, img1_url)
+                    img2 = load_input_image(img2_upload, img2_url)
+                    
+                    # Resize images
+                    img1 = img1.resize((512, 512))
+                    img2 = img2.resize((512, 512))
+                    
+                    # Prepare inputs for interpolation
+                    images_texts = [prompt, img1, img2]
+                    weights = [text_weight, weight1, weight2]
+                    
+                    # Generate prior embeddings
+                    prior_output = prior_pipeline.interpolate(images_texts, weights)
+                    
+                    # Generate the interpolated image
+                    image = text2img_pipeline(
+                        prompt,
+                        **prior_output,
+                        height=height,
+                        width=width
+                    ).images[0]
+                    
+                    # Store the image in session state
+                    st.session_state.interpolation_image = image
+                    
+                    # Prepare image for download
+                    buf = io.BytesIO()
+                    image.save(buf, format="PNG")
+                    st.session_state.interpolation_bytes = buf.getvalue()
+                    
+                    # Rerun to update the display
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error generating interpolation: {str(e)}")
 
 # Add footer
 st.markdown("---")
