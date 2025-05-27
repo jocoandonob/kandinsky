@@ -1,11 +1,13 @@
 import streamlit as st
 import torch
-from diffusers import KandinskyPriorPipeline, KandinskyPipeline, KandinskyImg2ImgPipeline
+from diffusers import KandinskyPriorPipeline, KandinskyPipeline, KandinskyImg2ImgPipeline, KandinskyInpaintPipeline
 from PIL import Image
 import io
 import os
 import requests
 from io import BytesIO
+import numpy as np
+from diffusers.utils import load_image
 
 # Set page config
 st.set_page_config(
@@ -191,7 +193,14 @@ def load_models():
             use_safetensors=True
         ).to(device)
         
-        return prior_pipeline, text2img_pipeline, img2img_pipeline
+        # Load inpainting pipeline
+        inpaint_pipeline = KandinskyInpaintPipeline.from_pretrained(
+            "kandinsky-community/kandinsky-2-1-inpaint",
+            torch_dtype=torch_dtype,
+            use_safetensors=True
+        ).to(device)
+        
+        return prior_pipeline, text2img_pipeline, img2img_pipeline, inpaint_pipeline
     except Exception as e:
         st.error(f"Detailed error during model loading: {str(e)}")
         raise
@@ -199,7 +208,7 @@ def load_models():
 # Load the models
 try:
     with st.spinner("Loading models... This might take a few minutes on first run."):
-        prior_pipeline, text2img_pipeline, img2img_pipeline = load_models()
+        prior_pipeline, text2img_pipeline, img2img_pipeline, inpaint_pipeline = load_models()
         st.success("Models loaded successfully!")
 except Exception as e:
     st.error(f"""
@@ -218,7 +227,7 @@ except Exception as e:
     st.stop()
 
 # Create tabs with new styling
-tab1, tab2 = st.tabs(["Text to Image", "Image to Image"])
+tab1, tab2, tab3 = st.tabs(["Text to Image", "Image to Image", "Inpainting"])
 
 # Wrap the content in a container
 with st.container():
@@ -385,6 +394,142 @@ with st.container():
                             file_name="transformed_image.png",
                             mime="image/png"
                         )
+
+    # Inpainting Tab
+    with tab3:
+        # Create two columns for the layout
+        col1, col2 = st.columns([1, 1])
+
+        # Left column for inputs
+        with col1:
+            with st.form("inpaint_form"):
+                # Image upload
+                uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+                
+                # URL input
+                image_url = st.text_input("Or enter an image URL")
+                
+                prompt = st.text_area(
+                    "Enter your prompt",
+                    placeholder="a hat, a crown, a flower",
+                    height=100
+                )
+                
+                negative_prompt = st.text_area(
+                    "Negative prompt (optional)",
+                    placeholder="low quality, bad quality",
+                    height=100
+                )
+                
+                st.markdown("### Image Settings")
+                
+                col1_1, col1_2 = st.columns(2)
+                with col1_1:
+                    width = st.slider(
+                        "Width",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                with col1_2:
+                    height = st.slider(
+                        "Height",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                
+                st.markdown("### Generation Settings")
+                num_inference_steps = st.slider(
+                    "Inference Steps",
+                    min_value=20,
+                    max_value=150,
+                    value=50,
+                    step=1
+                )
+                
+                guidance_scale = st.slider(
+                    "Guidance Scale",
+                    min_value=1.0,
+                    max_value=20.0,
+                    value=7.5,
+                    step=0.1
+                )
+                
+                generate_button = st.form_submit_button("🎨 Generate Inpainting")
+
+        # Right column for results
+        with col2:
+            st.markdown("### Generated Image")
+            if 'inpaint_image' not in st.session_state:
+                st.info("👆 Upload an image and click 'Generate Inpainting' to create your masterpiece!")
+            else:
+                with st.container():
+                    st.image(st.session_state.inpaint_image, width=500)
+                    if 'inpaint_bytes' in st.session_state:
+                        st.download_button(
+                            label="⬇️ Download Image",
+                            data=st.session_state.inpaint_bytes,
+                            file_name="inpainted_image.png",
+                            mime="image/png"
+                        )
+
+        # Generate image when the form is submitted
+        if generate_button and prompt and (uploaded_file or image_url):
+            with st.spinner("Generating inpainting..."):
+                try:
+                    # Load the input image
+                    if uploaded_file:
+                        init_image = Image.open(uploaded_file)
+                    else:
+                        response = requests.get(image_url)
+                        init_image = Image.open(BytesIO(response.content))
+                    
+                    # Resize the input image
+                    init_image = init_image.resize((width, height))
+                    
+                    # Create a simple mask (you can modify this to allow user to draw the mask)
+                    mask = np.zeros((height, width), dtype=np.float32)
+                    # Example: mask the top portion of the image
+                    mask[:height//3, :] = 1
+                    
+                    # Convert mask to PIL Image
+                    mask_image = Image.fromarray((mask * 255).astype('uint8'), 'L')
+                    
+                    # Generate prior embeddings
+                    prior_output = prior_pipeline(
+                        prompt,
+                        negative_prompt if negative_prompt else None,
+                        guidance_scale=guidance_scale
+                    )
+                    
+                    # Generate the inpainted image
+                    image = inpaint_pipeline(
+                        prompt,
+                        image=init_image,
+                        mask_image=mask_image,
+                        **prior_output,
+                        height=height,
+                        width=width,
+                        num_inference_steps=num_inference_steps,
+                        guidance_scale=guidance_scale
+                    ).images[0]
+                    
+                    # Store the image in session state
+                    st.session_state.inpaint_image = image
+                    
+                    # Prepare image for download
+                    buf = io.BytesIO()
+                    image.save(buf, format="PNG")
+                    st.session_state.inpaint_bytes = buf.getvalue()
+                    
+                    # Rerun to update the display
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error generating inpainting: {str(e)}")
 
 # Add footer
 st.markdown("---")
