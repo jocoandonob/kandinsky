@@ -60,7 +60,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Title and description
-st.title("🎨 Kandinsky Image Generator")
+st.title(" Kandinsky Image Generator")
 st.markdown("""
     <div style='text-align: center; margin-bottom: 2rem;'>
         Generate and transform images using the Kandinsky model.
@@ -122,7 +122,7 @@ except Exception as e:
     st.stop()
 
 # Create tabs
-tab1, tab2 = st.tabs(["🎨 Text to Image", "🔄 Image to Image"])
+tab1, tab2 = st.tabs([" Text to Image", " Image to Image"])
 
 # Text to Image Tab
 with tab1:
@@ -181,7 +181,7 @@ with tab1:
                 step=0.1
             )
             
-            generate_button = st.form_submit_button("🎨 Generate Image")
+            generate_button = st.form_submit_button(" Generate Image")
 
     # Right column for results
     with col2:
