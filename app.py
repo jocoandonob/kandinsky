@@ -9,7 +9,7 @@ from io import BytesIO
 
 # Set page config
 st.set_page_config(
-    page_title="Kandinsky Text-to-Image Generator",
+    page_title="Kandinsky Image Generator",
     page_icon="🎨",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -18,52 +18,148 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
     <style>
+    /* Main container styling */
     .main {
-        padding: 0rem 1rem;
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
     }
+    
+    /* Form container styling */
+    .stForm {
+        background-color: #1E1E1E;
+        padding: 2rem;
+        border-radius: 10px;
+        border: 1px solid #333;
+    }
+    
+    /* Text area styling */
     .stTextArea textarea {
         height: 100px !important;
+        background-color: #2D2D2D !important;
+        color: #FFFFFF !important;
+        border: 1px solid #444 !important;
+        border-radius: 5px !important;
     }
+    
+    /* Button styling */
     .stButton button {
         width: 100%;
         background-color: #4CAF50;
         color: white;
-        padding: 0.5rem 1rem;
+        padding: 0.8rem 1.5rem;
         border: none;
-        border-radius: 4px;
+        border-radius: 5px;
         cursor: pointer;
         font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
     }
+    
     .stButton button:hover {
         background-color: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-    .css-1d391kg {
-        padding: 1rem 0;
-    }
+    
+    /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 4rem;
-        white-space: pre-wrap;
-        background-color: #f0f2f6;
-        border-radius: 4px 4px 0 0;
         gap: 1rem;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+        background-color: #1E1E1E;
+        padding: 0.5rem;
+        border-radius: 10px;
+        border: 1px solid #333;
     }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 3rem;
+        white-space: pre-wrap;
+        background-color: #2D2D2D;
+        border-radius: 5px;
+        gap: 1rem;
+        padding: 0.5rem 1.5rem;
+        color: #FFFFFF;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #3D3D3D;
+    }
+    
     .stTabs [aria-selected="true"] {
         background-color: #4CAF50;
         color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* Slider styling */
+    .stSlider {
+        padding: 1rem 0;
+    }
+    
+    .stSlider [data-baseweb="slider"] {
+        background-color: #2D2D2D;
+    }
+    
+    /* File uploader styling */
+    .stFileUploader {
+        background-color: #2D2D2D;
+        border-radius: 5px;
+        padding: 1rem;
+        border: 1px solid #444;
+    }
+    
+    /* Image container styling */
+    .image-container {
+        background-color: #1E1E1E;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid #333;
+    }
+    
+    /* Title styling */
+    h1 {
+        color: #FFFFFF;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 2.5rem;
+        font-weight: 600;
+    }
+    
+    /* Subtitle styling */
+    h3 {
+        color: #FFFFFF;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+        font-weight: 500;
+    }
+    
+    /* Info message styling */
+    .stInfo {
+        background-color: #2D2D2D;
+        border: 1px solid #444;
+        border-radius: 5px;
+        padding: 1rem;
+    }
+    
+    /* Download button styling */
+    .stDownloadButton button {
+        background-color: #2196F3;
+    }
+    
+    .stDownloadButton button:hover {
+        background-color: #1976D2;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # Title and description
-st.title(" Kandinsky Image Generator")
+st.title("Kandinsky Image Generator")
 st.markdown("""
-    <div style='text-align: center; margin-bottom: 2rem;'>
-        Generate and transform images using the Kandinsky model.
+    <div style='text-align: center; margin-bottom: 2rem; color: #FFFFFF;'>
+        Generate and transform images using the Kandinsky model
     </div>
 """, unsafe_allow_html=True)
 
@@ -121,256 +217,174 @@ except Exception as e:
     """)
     st.stop()
 
-# Create tabs
-tab1, tab2 = st.tabs([" Text to Image", " Image to Image"])
+# Create tabs with new styling
+tab1, tab2 = st.tabs(["Text to Image", "Image to Image"])
 
-# Text to Image Tab
-with tab1:
-    # Create two columns for the layout
-    col1, col2 = st.columns([1, 1])
+# Wrap the content in a container
+with st.container():
+    # Text to Image Tab
+    with tab1:
+        # Create two columns for the layout
+        col1, col2 = st.columns([1, 1])
 
-    # Left column for inputs
-    with col1:
-        with st.form("text2img_form"):
-            prompt = st.text_area(
-                "Enter your prompt",
-                placeholder="A beautiful sunset over mountains, digital art style",
-                height=100
-            )
-            
-            negative_prompt = st.text_area(
-                "Negative prompt (optional)",
-                placeholder="blurry, low quality, distorted",
-                height=100
-            )
-            
-            st.markdown("### Image Settings")
-            
-            col1_1, col1_2 = st.columns(2)
-            with col1_1:
-                width = st.slider(
-                    "Width",
-                    min_value=512,
-                    max_value=1024,
-                    value=768,
-                    step=64
+        # Left column for inputs
+        with col1:
+            with st.form("text2img_form"):
+                prompt = st.text_area(
+                    "Enter your prompt",
+                    placeholder="A beautiful sunset over mountains, digital art style",
+                    height=100
                 )
-            with col1_2:
-                height = st.slider(
-                    "Height",
-                    min_value=512,
-                    max_value=1024,
-                    value=768,
-                    step=64
+                
+                negative_prompt = st.text_area(
+                    "Negative prompt (optional)",
+                    placeholder="blurry, low quality, distorted",
+                    height=100
                 )
-            
-            st.markdown("### Generation Settings")
-            num_inference_steps = st.slider(
-                "Inference Steps",
-                min_value=20,
-                max_value=100,
-                value=50,
-                step=1
-            )
-            
-            guidance_scale = st.slider(
-                "Guidance Scale",
-                min_value=1.0,
-                max_value=20.0,
-                value=7.5,
-                step=0.1
-            )
-            
-            generate_button = st.form_submit_button(" Generate Image")
-
-    # Right column for results
-    with col2:
-        st.markdown("### Generated Image")
-        if 'text2img_image' not in st.session_state:
-            st.info("👆 Enter a prompt and click 'Generate Image' to create your masterpiece!")
-        else:
-            st.image(st.session_state.text2img_image, width=500)
-            if 'text2img_bytes' in st.session_state:
-                st.download_button(
-                    label="⬇️ Download Image",
-                    data=st.session_state.text2img_bytes,
-                    file_name="generated_image.png",
-                    mime="image/png"
+                
+                st.markdown("### Image Settings")
+                
+                col1_1, col1_2 = st.columns(2)
+                with col1_1:
+                    width = st.slider(
+                        "Width",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                with col1_2:
+                    height = st.slider(
+                        "Height",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                
+                st.markdown("### Generation Settings")
+                num_inference_steps = st.slider(
+                    "Inference Steps",
+                    min_value=20,
+                    max_value=100,
+                    value=50,
+                    step=1
                 )
-
-    # Generate image when the form is submitted
-    if generate_button and prompt:
-        with st.spinner("Generating image..."):
-            try:
-                # Step 1: Generate image embeddings using the prior pipeline
-                image_embeds, negative_image_embeds = prior_pipeline(
-                    prompt,
-                    negative_prompt if negative_prompt else None,
-                    guidance_scale=guidance_scale
-                ).to_tuple()
                 
-                # Step 2: Generate the image using the main pipeline
-                image = text2img_pipeline(
-                    prompt,
-                    image_embeds=image_embeds,
-                    negative_prompt=negative_prompt if negative_prompt else None,
-                    negative_image_embeds=negative_image_embeds,
-                    height=height,
-                    width=width,
-                    num_inference_steps=num_inference_steps,
-                    guidance_scale=guidance_scale
-                ).images[0]
-                
-                # Store the image in session state
-                st.session_state.text2img_image = image
-                
-                # Prepare image for download
-                buf = io.BytesIO()
-                image.save(buf, format="PNG")
-                st.session_state.text2img_bytes = buf.getvalue()
-                
-                # Rerun to update the display
-                st.rerun()
-                
-            except Exception as e:
-                st.error(f"Error generating image: {str(e)}")
-
-# Image to Image Tab
-with tab2:
-    # Create two columns for the layout
-    col1, col2 = st.columns([1, 1])
-
-    # Left column for inputs
-    with col1:
-        with st.form("img2img_form"):
-            # Image upload
-            uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
-            
-            # URL input
-            image_url = st.text_input("Or enter an image URL")
-            
-            prompt = st.text_area(
-                "Enter your prompt",
-                placeholder="A fantasy landscape, Cinematic lighting",
-                height=100
-            )
-            
-            negative_prompt = st.text_area(
-                "Negative prompt (optional)",
-                placeholder="low quality, bad quality",
-                height=100
-            )
-            
-            st.markdown("### Image Settings")
-            
-            col1_1, col1_2 = st.columns(2)
-            with col1_1:
-                width = st.slider(
-                    "Width",
-                    min_value=512,
-                    max_value=1024,
-                    value=768,
-                    step=64
+                guidance_scale = st.slider(
+                    "Guidance Scale",
+                    min_value=1.0,
+                    max_value=20.0,
+                    value=7.5,
+                    step=0.1
                 )
-            with col1_2:
-                height = st.slider(
-                    "Height",
-                    min_value=512,
-                    max_value=1024,
-                    value=768,
-                    step=64
-                )
-            
-            st.markdown("### Generation Settings")
-            strength = st.slider(
-                "Transformation Strength",
-                min_value=0.1,
-                max_value=1.0,
-                value=0.3,
-                step=0.1
-            )
-            
-            num_inference_steps = st.slider(
-                "Inference Steps",
-                min_value=20,
-                max_value=100,
-                value=50,
-                step=1
-            )
-            
-            guidance_scale = st.slider(
-                "Guidance Scale",
-                min_value=1.0,
-                max_value=20.0,
-                value=7.5,
-                step=0.1
-            )
-            
-            generate_button = st.form_submit_button("🔄 Transform Image")
+                
+                generate_button = st.form_submit_button(" Generate Image")
 
-    # Right column for results
-    with col2:
-        st.markdown("### Generated Image")
-        if 'img2img_image' not in st.session_state:
-            st.info("👆 Upload an image or enter an URL and click 'Transform Image' to create your masterpiece!")
-        else:
-            st.image(st.session_state.img2img_image, width=500)
-            if 'img2img_bytes' in st.session_state:
-                st.download_button(
-                    label="⬇️ Download Image",
-                    data=st.session_state.img2img_bytes,
-                    file_name="transformed_image.png",
-                    mime="image/png"
-                )
+        # Right column for results
+        with col2:
+            st.markdown("### Generated Image")
+            if 'text2img_image' not in st.session_state:
+                st.info("👆 Enter a prompt and click 'Generate Image' to create your masterpiece!")
+            else:
+                with st.container():
+                    st.image(st.session_state.text2img_image, width=500)
+                    if 'text2img_bytes' in st.session_state:
+                        st.download_button(
+                            label="⬇️ Download Image",
+                            data=st.session_state.text2img_bytes,
+                            file_name="generated_image.png",
+                            mime="image/png"
+                        )
 
-    # Generate image when the form is submitted
-    if generate_button and prompt and (uploaded_file or image_url):
-        with st.spinner("Transforming image..."):
-            try:
-                # Load the input image
-                if uploaded_file:
-                    input_image = Image.open(uploaded_file)
-                else:
-                    response = requests.get(image_url)
-                    input_image = Image.open(BytesIO(response.content))
+    # Image to Image Tab
+    with tab2:
+        # Create two columns for the layout
+        col1, col2 = st.columns([1, 1])
+
+        # Left column for inputs
+        with col1:
+            with st.form("img2img_form"):
+                # Image upload
+                uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
                 
-                # Resize the input image
-                input_image = input_image.resize((width, height))
+                # URL input
+                image_url = st.text_input("Or enter an image URL")
                 
-                # Step 1: Generate image embeddings using the prior pipeline
-                image_embeds, negative_image_embeds = prior_pipeline(
-                    prompt,
-                    negative_prompt if negative_prompt else None,
-                    guidance_scale=guidance_scale
-                ).to_tuple()
+                prompt = st.text_area(
+                    "Enter your prompt",
+                    placeholder="A fantasy landscape, Cinematic lighting",
+                    height=100
+                )
                 
-                # Step 2: Generate the transformed image
-                image = img2img_pipeline(
-                    prompt,
-                    image=input_image,
-                    image_embeds=image_embeds,
-                    negative_prompt=negative_prompt if negative_prompt else None,
-                    negative_image_embeds=negative_image_embeds,
-                    height=height,
-                    width=width,
-                    num_inference_steps=num_inference_steps,
-                    guidance_scale=guidance_scale,
-                    strength=strength
-                ).images[0]
+                negative_prompt = st.text_area(
+                    "Negative prompt (optional)",
+                    placeholder="low quality, bad quality",
+                    height=100
+                )
                 
-                # Store the image in session state
-                st.session_state.img2img_image = image
+                st.markdown("### Image Settings")
                 
-                # Prepare image for download
-                buf = io.BytesIO()
-                image.save(buf, format="PNG")
-                st.session_state.img2img_bytes = buf.getvalue()
+                col1_1, col1_2 = st.columns(2)
+                with col1_1:
+                    width = st.slider(
+                        "Width",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
+                with col1_2:
+                    height = st.slider(
+                        "Height",
+                        min_value=512,
+                        max_value=1024,
+                        value=768,
+                        step=64
+                    )
                 
-                # Rerun to update the display
-                st.rerun()
+                st.markdown("### Generation Settings")
+                strength = st.slider(
+                    "Transformation Strength",
+                    min_value=0.1,
+                    max_value=1.0,
+                    value=0.3,
+                    step=0.1
+                )
                 
-            except Exception as e:
-                st.error(f"Error transforming image: {str(e)}")
+                num_inference_steps = st.slider(
+                    "Inference Steps",
+                    min_value=20,
+                    max_value=100,
+                    value=50,
+                    step=1
+                )
+                
+                guidance_scale = st.slider(
+                    "Guidance Scale",
+                    min_value=1.0,
+                    max_value=20.0,
+                    value=7.5,
+                    step=0.1
+                )
+                
+                generate_button = st.form_submit_button("🔄 Transform Image")
+
+        # Right column for results
+        with col2:
+            st.markdown("### Generated Image")
+            if 'img2img_image' not in st.session_state:
+                st.info("👆 Upload an image or enter an URL and click 'Transform Image' to create your masterpiece!")
+            else:
+                with st.container():
+                    st.image(st.session_state.img2img_image, width=500)
+                    if 'img2img_bytes' in st.session_state:
+                        st.download_button(
+                            label="⬇️ Download Image",
+                            data=st.session_state.img2img_bytes,
+                            file_name="transformed_image.png",
+                            mime="image/png"
+                        )
 
 # Add footer
 st.markdown("---")
