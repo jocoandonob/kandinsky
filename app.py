@@ -4,21 +4,50 @@ from diffusers import KandinskyPriorPipeline, KandinskyPipeline
 from PIL import Image
 import io
 import os
-from huggingface_hub import snapshot_download
 
 # Set page config
 st.set_page_config(
     page_title="Kandinsky Text-to-Image Generator",
     page_icon="🎨",
-    layout="wide"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
+
+# Custom CSS
+st.markdown("""
+    <style>
+    .main {
+        padding: 0rem 1rem;
+    }
+    .stTextArea textarea {
+        height: 100px !important;
+    }
+    .stButton button {
+        width: 100%;
+        background-color: #4CAF50;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    .stButton button:hover {
+        background-color: #45a049;
+    }
+    .css-1d391kg {
+        padding: 1rem 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Title and description
 st.title("🎨 Kandinsky Text-to-Image Generator")
 st.markdown("""
-    Generate beautiful images from text descriptions using the Kandinsky model.
-    Simply enter your prompt and click generate!
-""")
+    <div style='text-align: center; margin-bottom: 2rem;'>
+        Generate beautiful images from text descriptions using the Kandinsky model.
+    </div>
+""", unsafe_allow_html=True)
 
 # Initialize the models
 @st.cache_resource
@@ -65,55 +94,77 @@ except Exception as e:
     """)
     st.stop()
 
-# Create the input form
-with st.form("generation_form"):
-    prompt = st.text_area(
-        "Enter your prompt",
-        placeholder="A beautiful sunset over mountains, digital art style",
-        height=100
-    )
-    
-    negative_prompt = st.text_area(
-        "Negative prompt (optional)",
-        placeholder="blurry, low quality, distorted",
-        height=100
-    )
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        width = st.slider(
-            "Image Width",
-            min_value=512,
-            max_value=1024,
-            value=768,
-            step=64
+# Create two columns for the layout
+col1, col2 = st.columns([1, 1])
+
+# Left column for inputs
+with col1:
+    with st.form("generation_form"):
+        prompt = st.text_area(
+            "Enter your prompt",
+            placeholder="A beautiful sunset over mountains, digital art style",
+            height=100
         )
-    with col2:
-        height = st.slider(
-            "Image Height",
-            min_value=512,
-            max_value=1024,
-            value=768,
-            step=64
+        
+        negative_prompt = st.text_area(
+            "Negative prompt (optional)",
+            placeholder="blurry, low quality, distorted",
+            height=100
         )
-    
-    num_inference_steps = st.slider(
-        "Number of inference steps",
-        min_value=20,
-        max_value=100,
-        value=50,
-        step=1
-    )
-    
-    guidance_scale = st.slider(
-        "Guidance scale",
-        min_value=1.0,
-        max_value=20.0,
-        value=7.5,
-        step=0.1
-    )
-    
-    generate_button = st.form_submit_button("Generate Image")
+        
+        st.markdown("### Image Settings")
+        
+        col1_1, col1_2 = st.columns(2)
+        with col1_1:
+            width = st.slider(
+                "Width",
+                min_value=512,
+                max_value=1024,
+                value=768,
+                step=64
+            )
+        with col1_2:
+            height = st.slider(
+                "Height",
+                min_value=512,
+                max_value=1024,
+                value=768,
+                step=64
+            )
+        
+        st.markdown("### Generation Settings")
+        num_inference_steps = st.slider(
+            "Inference Steps",
+            min_value=20,
+            max_value=100,
+            value=50,
+            step=1
+        )
+        
+        guidance_scale = st.slider(
+            "Guidance Scale",
+            min_value=1.0,
+            max_value=20.0,
+            value=7.5,
+            step=0.1
+        )
+        
+        generate_button = st.form_submit_button("🎨 Generate Image")
+
+# Right column for results
+with col2:
+    st.markdown("### Generated Image")
+    if 'generated_image' not in st.session_state:
+        st.info("👆 Enter a prompt and click 'Generate Image' to create your masterpiece!")
+    else:
+        st.image(st.session_state.generated_image, width=500)
+        if 'image_bytes' in st.session_state:
+            st.download_button(
+                label="⬇️ Download Image",
+                data=st.session_state.image_bytes,
+                file_name="generated_image.png",
+                mime="image/png"
+            )
 
 # Generate image when the form is submitted
 if generate_button and prompt:
@@ -138,24 +189,24 @@ if generate_button and prompt:
                 guidance_scale=guidance_scale
             ).images[0]
             
-            # Display the image
-            st.image(image, caption="Generated Image", use_column_width=True)
+            # Store the image in session state
+            st.session_state.generated_image = image
             
-            # Add download button
+            # Prepare image for download
             buf = io.BytesIO()
             image.save(buf, format="PNG")
-            st.download_button(
-                label="Download Image",
-                data=buf.getvalue(),
-                file_name="generated_image.png",
-                mime="image/png"
-            )
+            st.session_state.image_bytes = buf.getvalue()
+            
+            # Rerun to update the display
+            st.rerun()
             
         except Exception as e:
             st.error(f"Error generating image: {str(e)}")
-else:
-    st.info("👆 Enter a prompt and click 'Generate Image' to create your masterpiece!")
 
 # Add footer
 st.markdown("---")
-st.markdown("Built with ❤️ using Streamlit and Kandinsky") 
+st.markdown("""
+    <div style='text-align: center; color: #666;'>
+        Built with ❤️ using Streamlit and Kandinsky
+    </div>
+""", unsafe_allow_html=True) 
