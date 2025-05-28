@@ -2,6 +2,8 @@
 
 A web application that generates images from text descriptions using the Kandinsky 2.2 model. Built with Streamlit and Python.
 
+![Kandinsky Generator Thumbnail](thumbnail.png)
+
 ## Features
 
 - Text-to-image generation using Kandinsky 2.2
